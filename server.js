@@ -16,6 +16,7 @@ app.use(express.static('public'));
 app.use(bodyParser.json());
 
 // Import Routes
+const routeHomeApi = require('./routes/homeApi');
 const routeUsers = require('./routes/users');
 const routeEntries = require('./routes/entries');
 const routeCostPerKm = require('./routes/costPerKm');
@@ -24,6 +25,7 @@ const routePersonalExpense = require('./routes/personalExpense');
 const routeGoal = require('./routes/goal');
 
 // Routes
+app.use(routeHomeApi);
 app.use(routeUsers);
 app.use(routeEntries);
 app.use(routeCostPerKm);
