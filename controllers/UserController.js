@@ -3,9 +3,15 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const CostPerKmController = require('../controllers/CostPerKmController');
 const Goal = require('../models/GoalSchema');
+const { validateRequiredFields, validateKilometers } = require('../utils/validationUtils');
 
 const register = async (req, res, next) => {
     try {
+        const requiredFieldsError = validateRequiredFields(['name', 'email', 'password'], req.body);
+        if (requiredFieldsError) {
+            return res.status(400).json({ error: requiredFieldsError });
+        }
+
         // Hash of password
         const hashedPass = await bcrypt.hash(req.body.password, 10);
 
@@ -71,6 +77,11 @@ const register = async (req, res, next) => {
 };
 
 const login = (req, res, next) => {
+    const requiredFieldsError = validateRequiredFields(['email', 'password'], req.body);
+    if (requiredFieldsError) {
+        return res.status(400).json({ error: requiredFieldsError });
+    }
+
     User.findOne({ email: req.body.email })
         .then(async user => {
             if (user) {
