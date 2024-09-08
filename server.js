@@ -1,10 +1,10 @@
 require('dotenv').config();
 const express = require('express');
 const app = express();
-const cors = require('cors');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const cron = require('node-cron');
+const cors = require('cors');
 const port = process.env.PORT || 8000;
 const { generateWeeklyReportsForAllUsers } = require('./services/WeeklyReportService')
 const { generateMonthlyReportForAllUsers } = require('./services/MonthlyReportService');
@@ -50,5 +50,7 @@ app.on('ready', () => {
         // Start cron jobs
         cron.schedule('10 0 * * 1', generateWeeklyReportsForAllUsers);
         cron.schedule('59 23 28-31 * *', generateMonthlyReportForAllUsers);
+
+        // generateWeeklyReportsForAllUsers();
     });
 });

@@ -7,19 +7,19 @@ const generatedWeeklyReport = async (userId) => {
     try {
         const goals = await Goal.find({ userId });
 
-        // Set startDate and endDate
+        // Define startDate and endDate
         const now = new Date();
-        const dayOfWeek = now.getDay();
-        const diffToSunday = dayOfWeek;
-        const diffToNextSaturday = 6 - dayOfWeek;
+        const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+        const diffToMonday = (dayOfWeek + 6) % 7; // Calculate days to the previous Monday
+        const diffToNextSunday = 6 - dayOfWeek; // Calculate days to the next Sunday
 
         const weekStartDate = new Date(now);
-        weekStartDate.setDate(now.getDate() - diffToSunday);
+        weekStartDate.setDate(now.getDate() - diffToMonday);
         weekStartDate.setHours(0, 0, 0, 0); // Starts at the beginning of the day
 
         const weekEndDate = new Date(now);
-        weekEndDate.setDate(now.getDate() + diffToNextSaturday);
-        weekEndDate.setHours(23, 59, 59, 999); // Ends at the beginning of the day
+        weekEndDate.setDate(now.getDate() + diffToNextSunday);
+        weekEndDate.setHours(23, 59, 59, 999); // Ends at the end of the day
 
         // Search entries of user week
         const entries = await Entry.find({

@@ -90,7 +90,7 @@ const getGoals = async (req, res) => {
         res.status(200).json({ retrievedGoals });
         
     } catch (error) {
-        console.error(erro);
+        console.error(error);
         res.status(500).json({ error: 'Não foi possível recuperar as metas' });
     }
 };

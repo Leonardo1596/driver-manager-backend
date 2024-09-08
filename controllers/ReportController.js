@@ -1,6 +1,7 @@
 const Entry = require('../models/EntrySchema');
 const PersonalExpense = require('../models/PersonalExpenseSchema');
 const CostPerKm = require('../models/CostPerKm');
+const WeeklyReport = require('../models/WeeklyReportSchema');
 
 
 const getFinancialSummaryByDate = async (req, res) => {
@@ -129,8 +130,33 @@ const getPersonalMaintenanceSummaryByDate = async (req, res) => {
     }
 };
 
+const getWeeklyReport = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { startDate } = req.query;
+
+        const start = new Date(`${startDate}T00:00:00.000Z`);
+        const end = new Date(start);
+        end.setDate(start.getDate() + 1);
+
+        const weeklyReport = await WeeklyReport.find({
+            userId,
+            weekStartDate: {
+                $gte: start,
+                $lt: end
+            }
+        });
+
+        res.json(weeklyReport);
+
+    } catch (error) {
+        
+    }
+};
+
 module.exports = {
     getFinancialSummaryByDate,
     getMaintenanceSummaryByDate,
-    getPersonalMaintenanceSummaryByDate
+    getPersonalMaintenanceSummaryByDate,
+    getWeeklyReport
 }
