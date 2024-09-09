@@ -50,7 +50,5 @@ app.on('ready', () => {
         // Start cron jobs
         cron.schedule('10 0 * * 1', generateWeeklyReportsForAllUsers);
         cron.schedule('59 23 28-31 * *', generateMonthlyReportForAllUsers);
-
-        // generateWeeklyReportsForAllUsers();
     });
 });

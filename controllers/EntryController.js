@@ -32,7 +32,7 @@ const createEntry = async (req, res) => {
             const gasolina = costPerKmData.gasolina.km !== 0 ? Number((costPerKmData.gasolina.value / costPerKmData.gasolina.km).toFixed(4)) : 0;
 
             return oleo + relacao + pneuDianteiro + pneuTraseiro + gasolina;
-        };
+        }
 
         const costPerKm = totalCalculateCostPerKm();
         let distance = finalKm - initialKm;
@@ -44,7 +44,7 @@ const createEntry = async (req, res) => {
 
         const existingEntry = await Entry.findOne({ userId: userId, date: date });
 
-        // Check if there is an entrie with the same date
+        // Check if there is an entry with the same date
         if (existingEntry) {
             return res.status(409).json({ error: 'Já existe um lançamento com essa data' });
         }
@@ -70,62 +70,56 @@ const createEntry = async (req, res) => {
 
         // Check if date is within the current week
         const isWithinCurrentWeek = (entryDate) => {
-            if (!entryDate) {
-                console.error('entryDate está indefinido');
-                return false;
-            }
-            // Check if entryDate is a string and create a date object
-            const entryDateObj = typeof entryDate === 'string' ? new Date(entryDate) : entryDate;
-
             const now = new Date();
-            const dayOfWeek = now.getDay();
-            const diffToSunday = dayOfWeek;
-            const diffToNextSaturday = 6 - dayOfWeek;
+            const currentDayOfWeek = now.getDay();
+            const diffToMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
 
-            // Set start of the week (Monday)
+            // Define the start of the week (Monday)
             const weekStartDate = new Date(now);
-            weekStartDate.setDate(now.getDate() - diffToSunday);
+            weekStartDate.setDate(now.getDate() - diffToMonday);
             weekStartDate.setHours(0, 0, 0, 0);
 
-            // Set end of the week (Sunday)
-            const weekEndDate = new Date(now);
-            weekEndDate.setDate(now.getDate() + diffToNextSaturday);
+            // Define the end of the week (Sunday)
+            const weekEndDate = new Date(weekStartDate);
+            weekEndDate.setDate(weekStartDate.getDate() + 6); // Ends on Sunday
             weekEndDate.setHours(23, 59, 59, 999);
 
-            // Comparison with local time zone
-            const entryDateLocal = new Date(entryDateObj.getTime() - (entryDateObj.getTimezoneOffset() * 60000));
-
-            return entryDateLocal >= weekStartDate && entryDateLocal <= weekEndDate;
+            const entryDateObj = new Date(entryDate);
+            return entryDateObj >= weekStartDate && entryDateObj <= weekEndDate;
         };
 
+        const isWithinCurrentMonth = (entryDate) => {
+            const now = new Date();
+            const entryDateObj = new Date(entryDate);
+            return (
+                entryDateObj.getFullYear() === now.getFullYear() &&
+                entryDateObj.getMonth() === now.getMonth()
+            );
+        };
 
         const allocateFundsToGoals = (goals, liquidGain) => {
             for (let goal of goals) {
                 if (liquidGain <= 0) break;
 
                 const remainingLimit = goal.limit - goal.weeklyAccumulated;
+                const amountToAdd = Math.min(liquidGain, remainingLimit);
 
-                if (remainingLimit > 0) {
-                    const amountToAdd = Math.min(liquidGain, remainingLimit);
-
-                    if (!isWithinCurrentWeek(date)) {
-                        goal.monthlyAccumulated += amountToAdd;
-                        goal.totalAccumulated += amountToAdd;
-                    } else {
-                        goal.weeklyAccumulated += amountToAdd;
-                        goal.monthlyAccumulated += amountToAdd;
-                        goal.totalAccumulated += amountToAdd;
-                    }
-
-                    liquidGain -= amountToAdd
+                if (isWithinCurrentWeek(date)) {
+                    goal.weeklyAccumulated += amountToAdd;
                 }
+                if (isWithinCurrentMonth(date)) {
+                    goal.monthlyAccumulated += amountToAdd;
+                }
+                goal.totalAccumulated += amountToAdd;
+
+                liquidGain -= amountToAdd;
             }
         };
 
         const goals = await Goal.find({ userId });
         allocateFundsToGoals(goals, liquidGain);
 
-        // Save goals updated
+        // Save updated goals
         for (let goal of goals) {
             await goal.save();
         }
@@ -137,22 +131,197 @@ const createEntry = async (req, res) => {
     }
 };
 
+
+// const deleteEntry = async (req, res) => {
+//     try {
+//         const { userId, entryId } = req.params;
+
+//         // Find the entry to be deleted
+//         const deletedEntry = await Entry.findOneAndDelete({
+//             userId,
+//             _id: entryId
+//         });
+
+//         if (!deletedEntry) {
+//             return res.status(404).json({ error: 'Lançamento não encontrado' });
+//         }
+
+//         // Retrieve goals for the user
+//         const goals = await Goal.find({ userId });
+
+//         const isWithinCurrentWeek = (entryDate) => {
+//             const now = new Date();
+//             const currentDayOfWeek = now.getDay();
+
+//             // Ajusta para que a semana comece na segunda-feira (1) e termine no domingo (0)
+//             const diffToMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
+
+//             // Define o início da semana (segunda-feira)
+//             const weekStartDate = new Date(now);
+//             weekStartDate.setDate(now.getDate() - diffToMonday);
+//             weekStartDate.setHours(0, 0, 0, 0);
+
+//             // Define o fim da semana (domingo)
+//             const weekEndDate = new Date(weekStartDate);
+//             weekEndDate.setDate(weekStartDate.getDate() + 6); // Termina no domingo
+//             weekEndDate.setHours(23, 59, 59, 999);
+
+//             // Log para verificar as datas
+//             console.log('weekStartDate:', weekStartDate);
+//             console.log('weekEndDate:', weekEndDate);
+//             console.log('entryDate:', entryDate);
+
+//             // Converte as datas para o fuso horário local (sem afetar o UTC)
+//             const localWeekStartDate = new Date(weekStartDate.getTime() - (weekStartDate.getTimezoneOffset() * 60000));
+//             const localWeekEndDate = new Date(weekEndDate.getTime() - (weekEndDate.getTimezoneOffset() * 60000));
+
+//             // Compara diretamente as datas
+//             return entryDate >= localWeekStartDate && entryDate <= localWeekEndDate;
+//         };
+
+//         const isWithinCurrentMonth = (entryDate) => {
+//             const now = new Date();
+//             return (
+//                 entryDate.getFullYear() === now.getFullYear() &&
+//                 entryDate.getMonth() === now.getMonth()
+//             );
+//         };
+
+//         const subtractFundsFromGoals = (goals, liquidGain) => {
+//             for (let goal of goals) {
+//                 const amountToSubtract = Math.min(liquidGain, goal.weeklyAccumulated);
+
+//                 if (isWithinCurrentWeek(deletedEntry.date)) {
+//                     goal.weeklyAccumulated -= amountToSubtract;
+//                 }
+
+//                 if (isWithinCurrentMonth(deletedEntry.date)) {
+//                     goal.monthlyAccumulated -= amountToSubtract;
+//                 }
+
+//                 goal.totalAccumulated -= amountToSubtract;
+
+//                 liquidGain -= amountToSubtract;
+
+//                 if (liquidGain <= 0) break;
+//             }
+//         };
+
+//         // Subtract funds from goals
+//         subtractFundsFromGoals(goals, deletedEntry.liquidGain);
+
+//         // Save the updated goals
+//         for (let goal of goals) {
+//             await goal.save();
+//         }
+
+//         res.status(200).json({ message: 'Lançamento deletado com sucesso' });
+
+//     } catch (error) {
+//         console.error('Ocorreu um erro ao deletar o lançamento: ', error);
+//         return res.status(500).json({ error: 'Ocorreu um erro ao deletar o lançamento' });
+//     }
+// };
+
+
+
+
 const deleteEntry = async (req, res) => {
     try {
         const { userId, entryId } = req.params;
 
+        // Find the entry to be deleted
         const deletedEntry = await Entry.findOneAndDelete({
             userId,
             _id: entryId
         });
 
-        return res.status(200).json({ message: 'Lançamento deletado com sucesso' });
+        if (!deletedEntry) {
+            return res.status(404).json({ error: 'Lançamento não encontrado' });
+        }
+
+        // Retrieve goals for the user
+        const goals = await Goal.find({ userId });
+
+        const isWithinCurrentWeek = (entryDate) => {
+            const now = new Date();
+            const currentDayOfWeek = now.getDay();
+
+            // Ajusta para que a semana comece na segunda-feira (1) e termine no domingo (0)
+            const diffToMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
+
+            // Define o início da semana (segunda-feira)
+            const weekStartDate = new Date(now);
+            weekStartDate.setDate(now.getDate() - diffToMonday);
+            weekStartDate.setHours(0, 0, 0, 0);
+
+            // Define o fim da semana (domingo)
+            const weekEndDate = new Date(weekStartDate);
+            weekEndDate.setDate(weekStartDate.getDate() + 6); // Termina no domingo
+            weekEndDate.setHours(23, 59, 59, 999);
+
+            const entryDateObj = new Date(entryDate);
+            return entryDateObj >= weekStartDate && entryDateObj <= weekEndDate;
+        };
+
+        const isWithinCurrentMonth = (entryDate) => {
+            const now = new Date();
+            const entryDateObj = new Date(entryDate);
+            return (
+                entryDateObj.getFullYear() === now.getFullYear() &&
+                entryDateObj.getMonth() === now.getMonth()
+            );
+        };
+
+        const subtractFundsFromGoals = (goals, liquidGain) => {
+            for (let goal of goals) {
+                // Valor a ser subtraído
+                let amountToSubtract = liquidGain;
+
+                // Atualiza semanalmente se estiver na semana atual
+                if (isWithinCurrentWeek(deletedEntry.date)) {
+                    const subtractFromWeekly = Math.min(amountToSubtract, goal.weeklyAccumulated);
+                    goal.weeklyAccumulated -= subtractFromWeekly;
+                    amountToSubtract -= subtractFromWeekly;
+                }
+
+                // Atualiza mensalmente se estiver no mês atual
+                if (isWithinCurrentMonth(deletedEntry.date)) {
+                    const subtractFromMonthly = Math.min(amountToSubtract, goal.monthlyAccumulated);
+                    goal.monthlyAccumulated -= subtractFromMonthly;
+                    amountToSubtract -= subtractFromMonthly;
+                }
+
+                // Sempre atualiza o total
+                goal.totalAccumulated -= liquidGain; // Subtrai o valor total do lançamento deletado
+
+                // Se o valor restante é menor ou igual a 0, sai do loop
+                if (amountToSubtract <= 0) break;
+            }
+        };
+
+        // Subtract funds from goals
+        subtractFundsFromGoals(goals, deletedEntry.liquidGain);
+
+        // Save the updated goals
+        for (let goal of goals) {
+            await goal.save();
+        }
+
+        res.status(200).json({ message: 'Lançamento deletado com sucesso' });
 
     } catch (error) {
         console.error('Ocorreu um erro ao deletar o lançamento: ', error);
         return res.status(500).json({ error: 'Ocorreu um erro ao deletar o lançamento' });
     }
 };
+
+
+
+
+
+
+
 
 const updateEntry = async (req, res) => {
     try {
