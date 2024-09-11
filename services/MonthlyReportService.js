@@ -11,7 +11,9 @@ const generatedMonthlyReport = async (userId) => {
         // Set startDate and endDate
         const now = new Date();
         const monthStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        const monthEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        monthStartDate.setUTCHours(0, 0, 0, 0);
+        const monthEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        monthEndDate.setUTCHours(23, 59, 59, 999);
 
         // Search entries of user week
         const entries = await Entry.find({

@@ -131,101 +131,6 @@ const createEntry = async (req, res) => {
     }
 };
 
-
-// const deleteEntry = async (req, res) => {
-//     try {
-//         const { userId, entryId } = req.params;
-
-//         // Find the entry to be deleted
-//         const deletedEntry = await Entry.findOneAndDelete({
-//             userId,
-//             _id: entryId
-//         });
-
-//         if (!deletedEntry) {
-//             return res.status(404).json({ error: 'Lançamento não encontrado' });
-//         }
-
-//         // Retrieve goals for the user
-//         const goals = await Goal.find({ userId });
-
-//         const isWithinCurrentWeek = (entryDate) => {
-//             const now = new Date();
-//             const currentDayOfWeek = now.getDay();
-
-//             // Ajusta para que a semana comece na segunda-feira (1) e termine no domingo (0)
-//             const diffToMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
-
-//             // Define o início da semana (segunda-feira)
-//             const weekStartDate = new Date(now);
-//             weekStartDate.setDate(now.getDate() - diffToMonday);
-//             weekStartDate.setHours(0, 0, 0, 0);
-
-//             // Define o fim da semana (domingo)
-//             const weekEndDate = new Date(weekStartDate);
-//             weekEndDate.setDate(weekStartDate.getDate() + 6); // Termina no domingo
-//             weekEndDate.setHours(23, 59, 59, 999);
-
-//             // Log para verificar as datas
-//             console.log('weekStartDate:', weekStartDate);
-//             console.log('weekEndDate:', weekEndDate);
-//             console.log('entryDate:', entryDate);
-
-//             // Converte as datas para o fuso horário local (sem afetar o UTC)
-//             const localWeekStartDate = new Date(weekStartDate.getTime() - (weekStartDate.getTimezoneOffset() * 60000));
-//             const localWeekEndDate = new Date(weekEndDate.getTime() - (weekEndDate.getTimezoneOffset() * 60000));
-
-//             // Compara diretamente as datas
-//             return entryDate >= localWeekStartDate && entryDate <= localWeekEndDate;
-//         };
-
-//         const isWithinCurrentMonth = (entryDate) => {
-//             const now = new Date();
-//             return (
-//                 entryDate.getFullYear() === now.getFullYear() &&
-//                 entryDate.getMonth() === now.getMonth()
-//             );
-//         };
-
-//         const subtractFundsFromGoals = (goals, liquidGain) => {
-//             for (let goal of goals) {
-//                 const amountToSubtract = Math.min(liquidGain, goal.weeklyAccumulated);
-
-//                 if (isWithinCurrentWeek(deletedEntry.date)) {
-//                     goal.weeklyAccumulated -= amountToSubtract;
-//                 }
-
-//                 if (isWithinCurrentMonth(deletedEntry.date)) {
-//                     goal.monthlyAccumulated -= amountToSubtract;
-//                 }
-
-//                 goal.totalAccumulated -= amountToSubtract;
-
-//                 liquidGain -= amountToSubtract;
-
-//                 if (liquidGain <= 0) break;
-//             }
-//         };
-
-//         // Subtract funds from goals
-//         subtractFundsFromGoals(goals, deletedEntry.liquidGain);
-
-//         // Save the updated goals
-//         for (let goal of goals) {
-//             await goal.save();
-//         }
-
-//         res.status(200).json({ message: 'Lançamento deletado com sucesso' });
-
-//     } catch (error) {
-//         console.error('Ocorreu um erro ao deletar o lançamento: ', error);
-//         return res.status(500).json({ error: 'Ocorreu um erro ao deletar o lançamento' });
-//     }
-// };
-
-
-
-
 const deleteEntry = async (req, res) => {
     try {
         const { userId, entryId } = req.params;
@@ -247,17 +152,17 @@ const deleteEntry = async (req, res) => {
             const now = new Date();
             const currentDayOfWeek = now.getDay();
 
-            // Ajusta para que a semana comece na segunda-feira (1) e termine no domingo (0)
+            // Adjusts so that the week starts on Monday (1) and ends on Sunday (0)
             const diffToMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
 
-            // Define o início da semana (segunda-feira)
+            // Sets the start of the week (Monday)
             const weekStartDate = new Date(now);
             weekStartDate.setDate(now.getDate() - diffToMonday);
             weekStartDate.setHours(0, 0, 0, 0);
 
-            // Define o fim da semana (domingo)
+            // Sets the end of the week (Sunday)
             const weekEndDate = new Date(weekStartDate);
-            weekEndDate.setDate(weekStartDate.getDate() + 6); // Termina no domingo
+            weekEndDate.setDate(weekStartDate.getDate() + 6); // Ends on Sunday
             weekEndDate.setHours(23, 59, 59, 999);
 
             const entryDateObj = new Date(entryDate);
@@ -275,27 +180,26 @@ const deleteEntry = async (req, res) => {
 
         const subtractFundsFromGoals = (goals, liquidGain) => {
             for (let goal of goals) {
-                // Valor a ser subtraído
+                // Value to be subtracted
                 let amountToSubtract = liquidGain;
 
-                // Atualiza semanalmente se estiver na semana atual
+                // Updates weekly if it is in the current week
                 if (isWithinCurrentWeek(deletedEntry.date)) {
                     const subtractFromWeekly = Math.min(amountToSubtract, goal.weeklyAccumulated);
                     goal.weeklyAccumulated -= subtractFromWeekly;
                     amountToSubtract -= subtractFromWeekly;
                 }
 
-                // Atualiza mensalmente se estiver no mês atual
+                // Updates monthly if it is in the current month
                 if (isWithinCurrentMonth(deletedEntry.date)) {
-                    const subtractFromMonthly = Math.min(amountToSubtract, goal.monthlyAccumulated);
+                    const subtractFromMonthly = Math.min(liquidGain, goal.monthlyAccumulated);
                     goal.monthlyAccumulated -= subtractFromMonthly;
-                    amountToSubtract -= subtractFromMonthly;
                 }
 
-                // Sempre atualiza o total
-                goal.totalAccumulated -= liquidGain; // Subtrai o valor total do lançamento deletado
+                // Always update total
+                goal.totalAccumulated -= liquidGain; // Subtracts the total value of the deleted entry
 
-                // Se o valor restante é menor ou igual a 0, sai do loop
+                // If the remaining value is less than or equal to 0, exit the loop
                 if (amountToSubtract <= 0) break;
             }
         };
@@ -315,13 +219,6 @@ const deleteEntry = async (req, res) => {
         return res.status(500).json({ error: 'Ocorreu um erro ao deletar o lançamento' });
     }
 };
-
-
-
-
-
-
-
 
 const updateEntry = async (req, res) => {
     try {
